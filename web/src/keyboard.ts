@@ -8,6 +8,9 @@ const COLORS: Record<Hand, { white: string; black: string }> = {
   L: { white: '#ffa04f', black: '#cc6f1f' },
 }
 
+const NAMES = ['Do', 'Do♯', 'Ré', 'Ré♯', 'Mi', 'Fa', 'Fa♯', 'Sol', 'Sol♯', 'La', 'La♯', 'Si']
+export const noteName = (p: number) => NAMES[p % 12]
+
 export interface Layout {
   first: number
   last: number
@@ -51,6 +54,7 @@ export function draw(
   now: number,
   pxPerSec: number,
   hidden: Set<Hand>,
+  labels = false,
 ) {
   const width = ctx.canvas.width
   ctx.fillStyle = '#16181d'
@@ -80,6 +84,13 @@ export function draw(
     const h = n.d * pxPerSec
     ctx.fillStyle = isBlack(n.p) ? COLORS[n.h].black : COLORS[n.h].white
     roundRect(ctx, x + 1, yBottom - h, w - 2, Math.max(h, 4), 4)
+    if (labels && h >= w * 0.9) {
+      const size = Math.min(Math.max(w * 0.45, 11), 22)
+      ctx.fillStyle = isBlack(n.p) ? 'rgb(255 255 255 / 90%)' : 'rgb(0 0 0 / 70%)'
+      ctx.font = `600 ${size}px system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.fillText(noteName(n.p).replace('♯', '#'), x + w / 2, yBottom - size * 0.5, w - 2)
+    }
   }
 
   // Touches blanches puis noires par-dessus

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AddSheet } from './AddSheet'
 import { fetchIndex, fetchSong, refreshJob, type Job } from './github'
 import { Player } from './Player'
+import { DAILY_GOAL, load as loadProgress, streak, todaySeconds } from './progress'
 import type { Song, SongEntry } from './types'
 
 const JOBS_KEY = 'piano-coach:jobs'
@@ -13,6 +14,7 @@ export default function App() {
   const [jobs, setJobs] = useState<Job[]>(loadJobs)
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string>()
+  const [filter, setFilter] = useState('')
 
   const reload = useCallback(() => {
     fetchIndex()
@@ -47,6 +49,13 @@ export default function App() {
 
   const known = new Set(songs?.map((s) => s.id))
   const pending = jobs.filter((j) => !(j.status === 'done' && known.has(j.songId)))
+  const progress = loadProgress()
+  const played = (id: string) => progress.songs[id]?.lastPlayed ?? 0
+  // Derniers morceaux travaillés d'abord, puis le reste dans l'ordre de la bibliothèque
+  const sorted = [...(songs ?? [])].sort((a, b) => played(b.id) - played(a.id))
+  const query = normalize(filter)
+  const visible = sorted.filter((s) => normalize(s.title).includes(query))
+  const resume = sorted.find((s) => played(s.id) && (progress.songs[s.id].position ?? 0) > 10)
 
   return (
     <main className="library">
@@ -60,7 +69,27 @@ export default function App() {
         </button>
       </header>
 
+      <Stats today={todaySeconds(progress)} streak={streak(progress)} />
+
       {error && <p className="error">{error}</p>}
+
+      {resume && !filter && (
+        <button className="resume" onClick={() => open(resume.id)}>
+          <Cover src={resume.cover} title={resume.title} />
+          <span>
+            <small>Reprendre</small>
+            <strong>{resume.title}</strong>
+            <small>
+              à {format(progress.songs[resume.id].position)}
+              {progress.songs[resume.id].stars > 0 && ' · '}
+              <Stars n={progress.songs[resume.id].stars} />
+            </small>
+          </span>
+          <span className="resume-play" aria-hidden>
+            ▶
+          </span>
+        </button>
+      )}
 
       {pending.length > 0 && (
         <section>
@@ -89,10 +118,19 @@ export default function App() {
       )}
 
       <section>
+        {(songs?.length ?? 0) > 6 && (
+          <input
+            className="filter"
+            type="search"
+            placeholder="Filtrer la bibliothèque"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        )}
         {!songs && !error && <p className="muted">Chargement…</p>}
         {songs?.length === 0 && <p className="muted">Aucun morceau. Appuie sur + pour commencer.</p>}
         <ul className="grid">
-          {songs?.map((s) => (
+          {visible.map((s) => (
             <li key={s.id}>
               <button className="card" onClick={() => open(s.id)}>
                 <Cover src={s.cover} title={s.title} />
@@ -101,6 +139,7 @@ export default function App() {
                   <small>
                     {Math.round(s.duration / 60)} min · {s.mode === 'song' ? 'arrangement' : 'piano solo'}
                   </small>
+                  <Stars n={progress.songs[s.id]?.stars ?? 0} />
                 </div>
               </button>
             </li>
@@ -126,6 +165,61 @@ const STATUS: Record<Job['status'], string> = {
   in_progress: 'Génération en cours…',
   done: 'Publication…',
   failed: 'Échec',
+}
+
+/** Objectif du jour (anneau) et série de jours consécutifs. */
+function Stats({ today, streak }: { today: number; streak: number }) {
+  const ratio = Math.min(1, today / DAILY_GOAL)
+  const r = 15
+  const c = 2 * Math.PI * r
+  return (
+    <div className="stats">
+      <div className={`stat ${ratio >= 1 ? 'done' : ''}`}>
+        <svg viewBox="0 0 36 36" aria-hidden>
+          <circle cx="18" cy="18" r={r} className="track" />
+          <circle cx="18" cy="18" r={r} className="fill" strokeDasharray={c} strokeDashoffset={c * (1 - ratio)} />
+        </svg>
+        <span>
+          <strong>
+            {Math.floor(today / 60)} / {DAILY_GOAL / 60} min
+          </strong>
+          <small>{ratio >= 1 ? 'Objectif du jour atteint' : 'Objectif du jour'}</small>
+        </span>
+      </div>
+      <div className={`stat ${streak ? 'done' : ''}`}>
+        <span className="flame" aria-hidden>
+          🔥
+        </span>
+        <span>
+          <strong>
+            {streak} jour{streak > 1 ? 's' : ''}
+          </strong>
+          <small>{streak ? 'de suite' : 'Joue une minute pour lancer ta série'}</small>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function Stars({ n }: { n: number }) {
+  if (!n) return null
+  return (
+    <span className="stars small" aria-label={`${n} sur 3`}>
+      {'★'.repeat(n)}
+      <span className="muted">{'☆'.repeat(3 - n)}</span>
+    </span>
+  )
+}
+
+const normalize = (v: string) =>
+  v
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+function format(t: number) {
+  const s = Math.max(0, Math.floor(t))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
 /** Pochette, ou à défaut un dégradé propre à chaque titre. */
