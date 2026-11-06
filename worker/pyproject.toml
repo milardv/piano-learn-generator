@@ -1,0 +1,39 @@
+[project]
+name = "piano-worker"
+version = "0.1.0"
+description = "Audio (YouTube ou micro) -> MIDI -> notes.json pour Piano Coach"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "yt-dlp>=2026.10.26",
+    "transkun>=2.0.1",
+    # torchaudio doit avoir la même version mineure que torch
+    "torch>=2.4,<2.12",
+    "torchaudio>=2.4",
+    "pretty-midi>=0.2.10",
+    # transkun importe pkg_resources, retiré de setuptools 81
+    "setuptools<81",
+]
+
+[project.optional-dependencies]
+# Plugin yt-dlp : récupère les PO tokens auprès du service bgutil (lancé par le workflow GitHub)
+cloud = ["bgutil-ytdlp-pot-provider>=2.0"]
+
+[project.scripts]
+piano-worker = "piano_worker.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/piano_worker"]
+
+# Torch CPU uniquement : pas de GPU sur GitHub Actions ni en local
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }

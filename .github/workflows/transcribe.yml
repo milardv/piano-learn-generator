@@ -1,0 +1,97 @@
+name: transcribe
+
+# Déclenché par la PWA (API workflow_dispatch) : une URL YouTube ou un fichier déjà poussé dans uploads/
+on:
+  workflow_dispatch:
+    inputs:
+      youtube_url:
+        description: URL YouTube
+        required: false
+      file:
+        description: Chemin d'un audio dans uploads/ (enregistrement micro)
+        required: false
+      id:
+        description: Identifiant du morceau (sinon id YouTube ou nom du fichier)
+        required: false
+      title:
+        description: Titre
+        required: false
+
+permissions:
+  contents: write
+
+# Un seul job à la fois : évite les conflits de push sur songs/
+concurrency:
+  group: transcribe
+  cancel-in-progress: false
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      # Fournit les « PO tokens » exigés par YouTube aux IP de datacenter
+      bgutil:
+        image: brainicism/bgutil-ytdlp-pot-provider
+        ports:
+          - 4416:4416
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier les entrées
+        env:
+          URL: ${{ inputs.youtube_url }}
+          FILE: ${{ inputs.file }}
+        run: |
+          if { [ -n "$URL" ] && [ -n "$FILE" ]; } || { [ -z "$URL" ] && [ -z "$FILE" ]; }; then
+            echo "::error::Renseigner youtube_url OU file"; exit 1
+          fi
+          case "$FILE" in ""|uploads/*) ;; *) echo "::error::file doit être dans uploads/"; exit 1;; esac
+
+      - name: Installer ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: worker/uv.lock
+
+      - name: Installer le worker
+        working-directory: worker
+        run: uv sync --extra cloud
+
+      - name: Cookies YouTube (optionnel)
+        env:
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+        run: |
+          if [ -n "$YT_COOKIES" ]; then
+            printf '%s' "$YT_COOKIES" > "$RUNNER_TEMP/cookies.txt"
+            echo "PIANO_YT_COOKIES=$RUNNER_TEMP/cookies.txt" >> "$GITHUB_ENV"
+          fi
+
+      - name: Transcrire
+        working-directory: worker
+        env:
+          URL: ${{ inputs.youtube_url }}
+          FILE: ${{ inputs.file }}
+          SONG_ID: ${{ inputs.id }}
+          TITLE: ${{ inputs.title }}
+        run: |
+          args=(--out-dir ../songs)
+          if [ -n "$URL" ]; then args+=(--youtube "$URL"); else args+=(--file "../$FILE"); fi
+          [ -n "$SONG_ID" ] && args+=(--id "$SONG_ID")
+          [ -n "$TITLE" ] && args+=(--title "$TITLE")
+          uv run piano-worker "${args[@]}"
+
+      - name: Publier le morceau
+        env:
+          FILE: ${{ inputs.file }}
+        run: |
+          git config user.name "piano-coach-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # L'enregistrement n'est plus utile une fois transcrit
+          [ -n "$FILE" ] && git rm -q "$FILE"
+          git add songs/
+          git commit -m "Ajouter un morceau transcrit"
+          git pull --rebase -q
+          git push
