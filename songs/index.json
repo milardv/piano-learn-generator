@@ -41,5 +41,19 @@
   "duration": 248.599,
   "notes": 1927,
   "easy": 535
+ },
+ {
+  "id": "pierre-garnier-ceux-qu-on-etait",
+  "title": "Pierre Garnier - Ceux qu'on était",
+  "mode": "song",
+  "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/31/51/12/315112a2-fb44-bfd2-960a-3201d09c273b/196871815581.jpg/300x300bb.jpg",
+  "source": {
+   "type": "soundcloud",
+   "url": "https://soundcloud.com/caswallawn/pierre-garnier-ceux-quon-etait-acoustique-star-academy-2023",
+   "query": "Pierre Garnier - Ceux qu'on était"
+  },
+  "duration": 102.359,
+  "notes": 466,
+  "easy": 226
  }
 ]
