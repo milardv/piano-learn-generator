@@ -18,10 +18,16 @@ export default defineConfig({
         background_color: '#0d0e12',
         display: 'fullscreen',
         orientation: 'landscape',
-        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
+        icons: [
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          // Le motif tient dans la zone sûre : Android peut le découper en cercle
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' },
+        ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg}'],
+        globPatterns: ['**/*.{js,css,html,svg,png}'],
         runtimeCaching: [
           // Morceaux et échantillons de piano : disponibles hors ligne une fois ouverts
           {

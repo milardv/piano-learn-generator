@@ -52,6 +52,7 @@ export default function App() {
     <main className="library">
       <header>
         <h1>
+          <img className="logo" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
           Piano<span>Coach</span>
         </h1>
         <button className="add" onClick={() => setAdding(true)} aria-label="Ajouter un morceau">

@@ -130,6 +130,15 @@ a {
   letter-spacing: -0.01em;
 }
 
+.library h1 .logo {
+  width: 36px;
+  height: 36px;
+  margin-right: 10px;
+  vertical-align: -7px;
+  border-radius: 9px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 40%);
+}
+
 .library h1 span {
   color: var(--accent);
   font-style: italic;

@@ -66,8 +66,10 @@ jobs:
           if [ "$count" -ne 1 ]; then echo "::error::Renseigner exactement un champ parmi query, youtube_url, file"; exit 1; fi
           case "$FILE" in ""|uploads/*) ;; *) echo "::error::file doit être dans uploads/"; exit 1;; esac
 
+      # Binaire précompilé : apt-get peut rester bloqué de longues minutes sur les runners
       - name: Installer ffmpeg
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+        uses: AnimMouse/setup-ffmpeg@v1
+        timeout-minutes: 5
 
       # yt-dlp a besoin d'un moteur JavaScript pour déchiffrer les formats YouTube
       - uses: denoland/setup-deno@v2
