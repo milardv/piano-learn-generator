@@ -87,12 +87,12 @@ jobs:
           path: ~/.cache/huggingface
           key: hf-pop2piano
 
-      # Partitions MIDI (Lakh clean_midi, 230 Mo) : consultées avant de passer par l'audio
+      # Partitions consultées avant de passer par l'audio : PDMX (piano, ~220 Mo) puis Lakh (MIDI complets, 230 Mo)
       - name: Cache des partitions
         uses: actions/cache@v4
         with:
           path: ~/.cache/piano-worker
-          key: lakh-clean-midi
+          key: scores-pdmx-lakh-v1
 
       - name: Installer le worker
         working-directory: worker

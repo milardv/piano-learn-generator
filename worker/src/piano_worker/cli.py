@@ -8,7 +8,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from . import accompany, arrange, audio, chords, notes, score, simplify, source, transcribe
+from . import accompany, arrange, audio, chords, notes, pdmx, score, simplify, source, transcribe
 
 log = logging.getLogger("piano_worker")
 
@@ -35,9 +35,17 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="piano-worker-") as tmp:
         work = Path(tmp)
         midi = None
-        # Chanson : une partition existante prime sur l'écoute de l'audio
-        found = score.find(args.title or args.search) if args.mode == "song" and (args.title or args.search) else None
-        if found:
+        # Une partition existante prime sur l'écoute de l'audio : d'abord pour piano (PDMX), puis MIDI complet (Lakh)
+        query = args.title or args.search
+        piano_score = pdmx.find(query) if query and not args.file else None
+        found = score.find(query) if query and not piano_score and args.mode == "song" and not args.file else None
+        if piano_score:
+            title = args.title or args.search
+            song_id = slugify(args.id or title)
+            midi = work / "score.mid"
+            midi.write_bytes(piano_score.midi)
+            song = {"id": song_id, "mode": "piano", "cover": args.cover, **from_piano_score(midi, piano_score, title)}
+        elif found:
             title = args.title or args.search
             song_id = slugify(args.id or title)
             song = {"id": song_id, "mode": "song", "cover": args.cover, **from_score(found, title)}
@@ -73,6 +81,19 @@ def main() -> None:
             shutil.copy(midi, args.out_dir / f"{song_id}.mid")
     update_index(args.out_dir)
     log.info("%s écrit : %d notes, %.0f s", out, len(song["notes"]), song["duration"])
+
+
+def from_piano_score(midi: Path, found: pdmx.PianoScore, title: str) -> dict:
+    import pretty_midi
+
+    beats = pretty_midi.PrettyMIDI(str(midi)).get_beats().tolist()
+    src = {"type": "score", "dataset": "pdmx", "file": found.path, "license": found.license}
+    song = notes.build(midi, title, src, beats)
+    path = score.chord_path(pretty_midi.PrettyMIDI(str(midi)), beats)
+    song["marks"] = [
+        {"t": round(beats[i], 3), "label": chords.chord_name(c)} for i, c in enumerate(path) if i == 0 or c != path[i - 1]
+    ]
+    return song
 
 
 def from_score(found: score.Score, title: str) -> dict:

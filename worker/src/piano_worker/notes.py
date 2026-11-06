@@ -18,14 +18,14 @@ SMOOTHING = 0.3  # inertie des centres de main
 
 def build(midi_path: Path, title: str, source: dict, beat_times: list[float]) -> dict:
     midi = pretty_midi.PrettyMIDI(str(midi_path))
-    raw = [n for inst in midi.instruments for n in inst.notes]
+    raw = [n for inst in midi.instruments if not inst.is_drum for n in inst.notes]
     notes = sorted(
         (n for n in raw if n.end - n.start >= MIN_DURATION and n.velocity >= MIN_VELOCITY),
         key=lambda n: (n.start, n.pitch),
     )
     log.info("%d notes retenues sur %d", len(notes), len(raw))
 
-    hands = split_hands(notes)
+    hands = staff_hands(midi, notes) or split_hands(notes)
     pedals = [
         {"t": round(start, 3), "d": round(end - start, 3)}
         for inst in midi.instruments
@@ -46,6 +46,18 @@ def build(midi_path: Path, title: str, source: dict, beat_times: list[float]) ->
         "easy": simplify.easy(full, beat_times),
         "pedals": pedals,
     }
+
+
+def staff_hands(midi: pretty_midi.PrettyMIDI, notes: list[pretty_midi.Note]) -> list[str] | None:
+    """Partition à deux portées : la portée aiguë est la main droite."""
+    staves = [inst for inst in midi.instruments if not inst.is_drum and inst.notes]
+    if len(staves) != 2:
+        return None
+    mean = lambda inst: sum(n.pitch for n in inst.notes) / len(inst.notes)  # noqa: E731
+    right = max(staves, key=mean)
+    right_ids = {id(n) for n in right.notes}
+    log.info("Mains données par les portées")
+    return ["R" if id(n) in right_ids else "L" for n in notes]
 
 
 def split_hands(notes: list[pretty_midi.Note]) -> list[str]:

@@ -93,9 +93,14 @@ def find(query: str) -> Score | None:
 
 def _to_score(name: str, midi: pretty_midi.PrettyMIDI, melody_track: pretty_midi.Instrument) -> Score:
     beats = midi.get_beats().tolist()
-    downbeats = midi.get_downbeats().tolist()
-    end = midi.get_end_time()
-    bounds = beats + [end]
+    path = chord_path(midi, beats, melody_track)
+    melody = _skyline(melody_track.notes)
+    return Score(name.removeprefix("clean_midi/"), melody, path, beats, midi.get_downbeats().tolist(), midi.get_end_time())
+
+
+def chord_path(midi: pretty_midi.PrettyMIDI, beats: list[float], melody_track: pretty_midi.Instrument | None = None) -> list[int]:
+    """Un accord par temps, d'après toutes les notes jouées (la mélodie compte moitié)."""
+    bounds = beats + [midi.get_end_time()]
     profiles = np.zeros((len(beats), 12))
     bass = np.zeros((len(beats), 12))
     for inst in midi.instruments:
@@ -105,17 +110,15 @@ def _to_score(name: str, midi: pretty_midi.PrettyMIDI, melody_track: pretty_midi
         for n in inst.notes:
             first = max(0, np.searchsorted(bounds, n.start, side="right") - 1)
             for i in range(first, len(beats)):
+                if bounds[i] >= n.end:
+                    break
                 overlap = min(n.end, bounds[i + 1]) - max(n.start, bounds[i])
                 if overlap <= 0:
-                    if bounds[i] >= n.end:
-                        break
                     continue
                 profiles[i, n.pitch % 12] += weight * overlap * n.velocity
                 if n.pitch < 55 and inst is not melody_track:
                     bass[i, n.pitch % 12] += overlap * n.velocity
-    path = chords.decode(profiles, bass)
-    melody = _skyline(melody_track.notes)
-    return Score(name.removeprefix("clean_midi/"), melody, path, beats, downbeats, end)
+    return chords.decode(profiles, bass)
 
 
 def _melody_track(midi: pretty_midi.PrettyMIDI) -> tuple[pretty_midi.Instrument | None, float]:
