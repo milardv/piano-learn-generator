@@ -127,7 +127,7 @@ export function Player({ song, onBack }: { song: Song; onBack: () => void }) {
         }
         if (s.time > song.duration + 1) finish()
       }
-      draw(ctx, layout, notes, s.time, PX_PER_SEC * (window.devicePixelRatio || 1), s.hidden, s.prefs.labels)
+      draw(ctx, layout, notes, s.time, PX_PER_SEC * (window.devicePixelRatio || 1), s.hidden, s.prefs.labels, song.marks)
       if (ts - lastUiUpdate > 250) {
         lastUiUpdate = ts
         setTime(s.time)

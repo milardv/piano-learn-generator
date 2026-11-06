@@ -8,11 +8,20 @@ export interface Note {
   d: number // durée (s)
   v: number // vélocité 0-127
   h: Hand
+  f?: number // doigté conseillé (1 = pouce), exercices guidés
+}
+
+/** Repère affiché sur le rouleau : accord, section… */
+export interface Mark {
+  t: number
+  label: string
 }
 
 type Source =
   | { type: 'youtube'; url: string; videoId: string; query?: string }
   | { type: 'upload'; file: string }
+  | { type: 'soundcloud'; url: string; query?: string }
+  | { type: 'lesson'; program: string; lesson: string }
 
 export interface Song {
   version: number
@@ -27,6 +36,7 @@ export interface Song {
   notes: Note[]
   easy?: Note[] // version 2+
   pedals: { t: number; d: number }[]
+  marks?: Mark[]
 }
 
 export interface SongEntry {

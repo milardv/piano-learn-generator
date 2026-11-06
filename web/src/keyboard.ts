@@ -1,4 +1,4 @@
-import type { Hand, Note } from './types'
+import type { Hand, Mark, Note } from './types'
 
 const BLACK = new Set([1, 3, 6, 8, 10])
 export const isBlack = (p: number) => BLACK.has(p % 12)
@@ -55,6 +55,7 @@ export function draw(
   pxPerSec: number,
   hidden: Set<Hand>,
   labels = false,
+  marks: Mark[] = [],
 ) {
   const width = ctx.canvas.width
   ctx.fillStyle = '#16181d'
@@ -84,7 +85,21 @@ export function draw(
     const h = n.d * pxPerSec
     ctx.fillStyle = isBlack(n.p) ? COLORS[n.h].black : COLORS[n.h].white
     roundRect(ctx, x + 1, yBottom - h, w - 2, Math.max(h, 4), 4)
-    if (labels && h >= w * 0.9) {
+    if (n.f && h >= w * 0.6) {
+      // Doigté : pastille chiffrée en bas de la note
+      const r = Math.min(w * 0.36, 13 * (window.devicePixelRatio || 1))
+      const cy = yBottom - r - 3
+      ctx.fillStyle = 'rgb(255 255 255 / 92%)'
+      ctx.beginPath()
+      ctx.arc(x + w / 2, cy, r, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#111'
+      ctx.font = `700 ${r * 1.3}px system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(String(n.f), x + w / 2, cy + 1)
+      ctx.textBaseline = 'alphabetic'
+    } else if (labels && h >= w * 0.9) {
       const size = Math.min(Math.max(w * 0.45, 11), 22)
       ctx.fillStyle = isBlack(n.p) ? 'rgb(255 255 255 / 90%)' : 'rgb(0 0 0 / 70%)'
       ctx.font = `600 ${size}px system-ui, sans-serif`
@@ -92,6 +107,8 @@ export function draw(
       ctx.fillText(noteName(n.p).replace('♯', '#'), x + w / 2, yBottom - size * 0.5, w - 2)
     }
   }
+
+  drawMarks(ctx, l, marks, now, horizon, pxPerSec)
 
   // Touches blanches puis noires par-dessus
   const keyH = l.height - l.keyboardTop
@@ -112,6 +129,46 @@ export function draw(
     }
   }
   return active
+}
+
+/** Repères (accords, sections) : ligne en travers du rouleau, et le repère en cours épinglé en haut. */
+function drawMarks(ctx: CanvasRenderingContext2D, l: Layout, marks: Mark[], now: number, horizon: number, pxPerSec: number) {
+  if (!marks.length) return
+  const dpr = window.devicePixelRatio || 1
+  const width = ctx.canvas.width
+  const size = 13 * dpr
+  ctx.font = `600 ${size}px system-ui, sans-serif`
+  ctx.textAlign = 'left'
+  let current: Mark | undefined
+  for (const m of marks) {
+    if (m.t <= now) current = m
+    if (m.t <= now || m.t > horizon) continue
+    const y = l.keyboardTop - (m.t - now) * pxPerSec
+    ctx.strokeStyle = 'rgb(242 196 109 / 35%)'
+    ctx.setLineDash([6 * dpr, 6 * dpr])
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(width, y)
+    ctx.stroke()
+    ctx.setLineDash([])
+    pill(ctx, m.label, 8 * dpr, y - size - 8 * dpr, size, 'rgb(23 25 31 / 85%)', '#f2c46d')
+  }
+  if (current) {
+    ctx.font = `700 ${size * 1.3}px system-ui, sans-serif`
+    pill(ctx, current.label, 8 * dpr, 8 * dpr, size * 1.3, '#f2c46d', '#1b1405')
+  }
+}
+
+function pill(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, bg: string, fg: string) {
+  const pad = size * 0.5
+  const w = ctx.measureText(text).width + pad * 2
+  const h = size + pad
+  ctx.fillStyle = bg
+  ctx.beginPath()
+  ctx.roundRect(x, y, w, h, h / 2)
+  ctx.fill()
+  ctx.fillStyle = fg
+  ctx.fillText(text, x + pad, y + size * 0.95)
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {

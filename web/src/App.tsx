@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AddSheet } from './AddSheet'
 import { fetchIndex, fetchSong, refreshJob, type Job } from './github'
+import { lessonSong, PROGRAMS } from './lessons/programs'
 import { Player } from './Player'
+import { LessonView, ProgramList, ProgramView } from './Programs'
 import { DAILY_GOAL, load as loadProgress, streak, todaySeconds } from './progress'
 import type { Song, SongEntry } from './types'
 
 const JOBS_KEY = 'piano-coach:jobs'
-const POLL_MS = 15000
+const POLL_MS = 5000
 
 export default function App() {
   const [songs, setSongs] = useState<SongEntry[]>()
@@ -15,6 +17,9 @@ export default function App() {
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string>()
   const [filter, setFilter] = useState('')
+  const [tab, setTab] = useState<'songs' | 'programs'>('songs')
+  const [programId, setProgramId] = useState<string>()
+  const [lessonId, setLessonId] = useState<string>()
 
   const reload = useCallback(() => {
     fetchIndex()
@@ -47,6 +52,31 @@ export default function App() {
 
   if (song) return <Player song={song} onBack={() => setSong(undefined)} />
 
+  const program = PROGRAMS.find((p) => p.id === programId)
+  const lessonIndex = program?.lessons.findIndex((l) => l.id === lessonId) ?? -1
+  if (program && lessonIndex >= 0) {
+    const lesson = program.lessons[lessonIndex]
+    const next = program.lessons[lessonIndex + 1]
+    return (
+      <main className="library">
+        <LessonView
+          program={program}
+          lesson={lesson}
+          onBack={() => setLessonId(undefined)}
+          onStart={() => setSong(lessonSong(program, lesson))}
+          onNext={next ? () => setLessonId(next.id) : undefined}
+        />
+      </main>
+    )
+  }
+  if (program) {
+    return (
+      <main className="library">
+        <ProgramView program={program} onBack={() => setProgramId(undefined)} onLesson={(l) => setLessonId(l.id)} />
+      </main>
+    )
+  }
+
   const known = new Set(songs?.map((s) => s.id))
   const pending = jobs.filter((j) => !(j.status === 'done' && known.has(j.songId)))
   const progress = loadProgress()
@@ -64,13 +94,28 @@ export default function App() {
           <img className="logo" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
           Piano<span>Coach</span>
         </h1>
-        <button className="add" onClick={() => setAdding(true)} aria-label="Ajouter un morceau">
-          +
-        </button>
+        {tab === 'songs' && (
+          <button className="add" onClick={() => setAdding(true)} aria-label="Ajouter un morceau">
+            +
+          </button>
+        )}
       </header>
 
       <Stats today={todaySeconds(progress)} streak={streak(progress)} />
 
+      <div className="segmented tabs" role="tablist">
+        <button role="tab" aria-checked={tab === 'songs'} aria-selected={tab === 'songs'} onClick={() => setTab('songs')}>
+          Morceaux
+        </button>
+        <button role="tab" aria-checked={tab === 'programs'} aria-selected={tab === 'programs'} onClick={() => setTab('programs')}>
+          Programmes
+        </button>
+      </div>
+
+      {tab === 'programs' && <ProgramList programs={PROGRAMS} onOpen={(p) => setProgramId(p.id)} />}
+
+      {tab === 'songs' && (
+        <>
       {error && <p className="error">{error}</p>}
 
       {resume && !filter && (
@@ -106,10 +151,19 @@ export default function App() {
                         Échec · <a href={j.runUrl} target="_blank" rel="noreferrer">voir</a> ·{' '}
                         <button className="link" onClick={() => setJobs(jobs.filter((x) => x !== j))}>retirer</button>
                       </>
+                    ) : j.status === 'in_progress' && j.progress !== undefined ? (
+                      <>
+                        {j.progress} % · {j.stage}
+                      </>
                     ) : (
                       STATUS[j.status]
                     )}
                   </small>
+                  {j.status !== 'failed' && (
+                    <div className="job-progress" role="progressbar" aria-valuenow={j.progress ?? 0}>
+                      <i style={{ width: `${j.status === 'done' ? 100 : (j.progress ?? 0)}%` }} />
+                    </div>
+                  )}
                 </div>
               </li>
             ))}
@@ -146,6 +200,9 @@ export default function App() {
           ))}
         </ul>
       </section>
+
+        </>
+      )}
 
       {adding && (
         <AddSheet
