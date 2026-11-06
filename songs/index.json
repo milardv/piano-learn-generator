@@ -29,6 +29,21 @@
   "easy": 616
  },
  {
+  "id": "Erik-Satie---Gymnop-die-No-1",
+  "title": "Erik Satie - Gymnopédie No. 1",
+  "mode": "piano",
+  "cover": null,
+  "source": {
+   "type": "score",
+   "dataset": "pdmx",
+   "file": "mid/11/19/QmTf8HrAHSEujZsbJngMNUHwSs1hc2thT7kftUpuU6Q3tK.mid",
+   "license": "cc-zero"
+  },
+  "duration": 175.386,
+  "notes": 455,
+  "easy": 233
+ },
+ {
   "id": "The-Beatles---Let-It-Be",
   "title": "The Beatles - Let It Be",
   "mode": "song",
