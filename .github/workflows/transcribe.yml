@@ -95,3 +95,11 @@ jobs:
           git commit -m "Ajouter un morceau transcrit"
           git pull --rebase -q
           git push
+
+  deploy:
+    needs: transcribe
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy.yml

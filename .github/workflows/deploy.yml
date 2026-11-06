@@ -1,0 +1,62 @@
+name: deploy
+
+# Publie la PWA (et la bibliothèque songs/) sur GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths: [web/**, songs/**, .github/workflows/deploy.yml]
+  workflow_dispatch:
+  # Appelé par transcribe.yml : un push fait avec GITHUB_TOKEN ne déclenche pas l'événement push
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Pointe de main, pour inclure le morceau que transcribe vient de commiter
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Copier la bibliothèque dans le site
+        # web/public/songs est un lien symbolique en local : on le remplace par une vraie copie
+        run: rm -f web/public/songs && cp -r songs web/public/songs
+
+      - name: Build
+        working-directory: web
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

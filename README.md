@@ -1,6 +1,7 @@
 # Piano Coach
 
 Apprendre n'importe quel morceau au piano à partir d'une vidéo YouTube ou d'un enregistrement micro.
+Site : https://milardv.github.io/piano-learn-generator/
 Les notes défilent sur un clavier, à la vitesse choisie. 100 % gratuit, utilisable sur téléphone, PC éteint.
 
 ```
@@ -11,6 +12,7 @@ PWA (téléphone) ──workflow_dispatch──▶ GitHub Actions (worker) ─�
 |---|---|
 | `worker/` | Python : audio (yt-dlp ou fichier) → nettoyage ffmpeg → Transkun → `notes.json` |
 | `.github/workflows/transcribe.yml` | Exécute le worker dans le cloud et commite le résultat |
+| `.github/workflows/deploy.yml` | Publie la PWA et `songs/` sur GitHub Pages |
 | `songs/` | Bibliothèque : un JSON par morceau + `index.json` |
 | `uploads/` | Enregistrements micro en attente de transcription |
 | `web/` | PWA React : lecteur (notes qui tombent, vitesse, mains séparées) |
@@ -40,10 +42,13 @@ npm run dev
 
 ## Déploiement (gratuit)
 
-1. Pousser ce dépôt sur GitHub (privé).
-2. Cloudflare Pages : connecter le dépôt, racine `web`, commande `npm run build`, sortie `dist`.
-   Chaque commit d'un morceau redéploie le site.
-3. Optionnel, si YouTube bloque le runner : secret `YT_COOKIES` (cookies Netscape d'un compte Google **secondaire**).
+GitHub Pages + Actions, gratuits et illimités pour un dépôt public.
+
+1. Une seule fois : *Settings → Pages → Build and deployment → Source : GitHub Actions*.
+2. `.github/workflows/deploy.yml` publie le site à chaque push sur `web/` ou `songs/`,
+   et après chaque transcription (appelé par `transcribe.yml`).
+3. Site : https://milardv.github.io/piano-learn-generator/
+4. Optionnel, si YouTube bloque le runner : secret `YT_COOKIES` (cookies Netscape d'un compte Google **secondaire**).
 
 ## Format `songs/<id>.json`
 

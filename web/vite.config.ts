@@ -3,6 +3,8 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // GitHub Pages sert le site sous /<nom-du-repo>/
+  base: process.env.BASE_PATH ?? '/',
   plugins: [
     react(),
     VitePWA({
@@ -10,6 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Piano Coach',
         short_name: 'Piano',
+        lang: 'fr',
         description: "Apprendre n'importe quel morceau au piano",
         theme_color: '#0f1115',
         background_color: '#0f1115',
