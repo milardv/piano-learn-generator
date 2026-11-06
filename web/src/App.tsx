@@ -191,7 +191,7 @@ export default function App() {
                 <div className="card-text">
                   <strong>{s.title}</strong>
                   <small>
-                    {Math.round(s.duration / 60)} min · {s.mode === 'song' ? 'arrangement' : 'piano solo'}
+                    {Math.round(s.duration / 60)} min · {s.source?.type === 'score' ? 'partition' : s.mode === 'song' ? 'arrangement' : 'piano solo'}
                   </small>
                   <Stars n={progress.songs[s.id]?.stars ?? 0} />
                 </div>

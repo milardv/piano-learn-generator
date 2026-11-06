@@ -29,6 +29,20 @@
   "easy": 616
  },
  {
+  "id": "The-Beatles---Let-It-Be",
+  "title": "The Beatles - Let It Be",
+  "mode": "song",
+  "cover": null,
+  "source": {
+   "type": "score",
+   "dataset": "lakh",
+   "file": "The Beatles/Let It Be.6.mid"
+  },
+  "duration": 226.285,
+  "notes": 953,
+  "easy": 300
+ },
+ {
   "id": "daft-punk-get-lucky",
   "title": "Daft Punk - Get Lucky",
   "mode": "song",

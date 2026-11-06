@@ -8,7 +8,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from . import arrange, audio, notes, simplify, source, transcribe
+from . import accompany, arrange, audio, chords, notes, score, simplify, source, transcribe
 
 log = logging.getLogger("piano_worker")
 
@@ -34,29 +34,72 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="piano-worker-") as tmp:
         work = Path(tmp)
-        if args.search:
-            audio_src = source.from_search(args.search, work)
-        elif args.youtube:
-            audio_src = source.from_youtube(args.youtube, work)
+        midi = None
+        # Chanson : une partition existante prime sur l'écoute de l'audio
+        found = score.find(args.title or args.search) if args.mode == "song" and (args.title or args.search) else None
+        if found:
+            title = args.title or args.search
+            song_id = slugify(args.id or title)
+            song = {"id": song_id, "mode": "song", "cover": args.cover, **from_score(found, title)}
         else:
-            audio_src = source.from_file(args.file, args.title)
-        title = args.title or audio_src.title
-        song_id = slugify(args.id or audio_src.source.get("videoId") or args.file.stem)
+            if args.search:
+                audio_src = source.from_search(args.search, work)
+            elif args.youtube:
+                audio_src = source.from_youtube(args.youtube, work)
+            else:
+                audio_src = source.from_file(args.file, args.title)
+            title = args.title or audio_src.title
+            song_id = slugify(args.id or audio_src.source.get("videoId") or args.file.stem)
 
-        wav = audio.preprocess(audio_src.path, work / "clean.wav")
-        if args.mode == "song":
-            midi = arrange.to_midi(wav, work / "song.mid")
-        else:
-            midi = transcribe.to_midi(wav, work / "song.mid", args.device)
-        song = {"id": song_id, "mode": args.mode, "cover": args.cover, **notes.build(midi, title, audio_src.source, simplify.beats(wav))}
+            wav = audio.preprocess(audio_src.path, work / "clean.wav")
+            beat_times = simplify.beats(wav)
+            if args.mode == "song":
+                midi = arrange.to_midi(wav, work / "song.mid")
+                song = notes.build(midi, title, audio_src.source, beat_times)
+                # Mélodie de la reprise Pop2Piano, accords reconnus dans l'audio d'origine
+                melody = [n for n in song["notes"] if n["h"] == "R"]
+                song |= accompany.build(_top_line(melody), chords.from_audio(wav, beat_times), beat_times, None, song["duration"])
+                pitches = [n["p"] for n in song["notes"]]
+                song["range"] = {"min": min(pitches), "max": max(pitches)}
+            else:
+                midi = transcribe.to_midi(wav, work / "song.mid", args.device)
+                song = notes.build(midi, title, audio_src.source, beat_times)
+            song = {"id": song_id, "mode": args.mode, "cover": args.cover, **song}
 
         args.out_dir.mkdir(parents=True, exist_ok=True)
         out = args.out_dir / f"{song_id}.json"
         out.write_text(json.dumps(song, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-        if args.keep_midi:
+        if args.keep_midi and midi:
             shutil.copy(midi, args.out_dir / f"{song_id}.mid")
     update_index(args.out_dir)
     log.info("%s écrit : %d notes, %.0f s", out, len(song["notes"]), song["duration"])
+
+
+def from_score(found: score.Score, title: str) -> dict:
+    song = {
+        "version": notes.FORMAT_VERSION,
+        "title": title,
+        "source": {"type": "score", "dataset": "lakh", "file": found.file},
+        "duration": round(found.duration, 3),
+        "beats": [round(b, 3) for b in found.beats],
+        "pedals": [],
+        **accompany.build(found.melody, found.chords, found.beats, found.downbeats, found.duration),
+    }
+    pitches = [n["p"] for n in song["notes"]]
+    song["range"] = {"min": min(pitches), "max": max(pitches)}
+    return song
+
+
+def _top_line(notes_: list[dict]) -> list[dict]:
+    """Note la plus aiguë de chaque attaque, sans chevauchement : la ligne mélodique."""
+    tops: list[dict] = []
+    for n in sorted(notes_, key=lambda n: (n["t"], -n["p"])):
+        if tops and n["t"] - tops[-1]["t"] < 0.05:
+            continue
+        tops.append(dict(n))
+    for a, b in zip(tops, tops[1:]):
+        a["d"] = min(a["d"], b["t"] - a["t"])
+    return [n for n in tops if n["d"] >= 0.06]
 
 
 def update_index(out_dir: Path) -> None:

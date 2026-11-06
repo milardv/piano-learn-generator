@@ -22,6 +22,7 @@ type Source =
   | { type: 'upload'; file: string }
   | { type: 'soundcloud'; url: string; query?: string }
   | { type: 'lesson'; program: string; lesson: string }
+  | { type: 'score'; dataset: string; file: string }
 
 export interface Song {
   version: number

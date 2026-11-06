@@ -87,6 +87,13 @@ jobs:
           path: ~/.cache/huggingface
           key: hf-pop2piano
 
+      # Partitions MIDI (Lakh clean_midi, 230 Mo) : consultées avant de passer par l'audio
+      - name: Cache des partitions
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/piano-worker
+          key: lakh-clean-midi
+
       - name: Installer le worker
         working-directory: worker
         run: uv sync --extra cloud
