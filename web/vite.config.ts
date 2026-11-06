@@ -14,8 +14,8 @@ export default defineConfig({
         short_name: 'Piano',
         lang: 'fr',
         description: "Apprendre n'importe quel morceau au piano",
-        theme_color: '#0f1115',
-        background_color: '#0f1115',
+        theme_color: '#0d0e12',
+        background_color: '#0d0e12',
         display: 'fullscreen',
         orientation: 'landscape',
         icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }],
@@ -26,6 +26,7 @@ export default defineConfig({
           // Morceaux et échantillons de piano : disponibles hors ligne une fois ouverts
           {
             urlPattern: ({ url }) => url.pathname.includes('/songs/'),
+            // Inclut raw.githubusercontent.com : la bibliothèque reste lisible hors ligne
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'songs' },
           },
@@ -33,6 +34,11 @@ export default defineConfig({
             urlPattern: ({ url }) => url.href.startsWith('https://tonejs.github.io/audio/salamander/'),
             handler: 'CacheFirst',
             options: { cacheName: 'piano-samples', cacheableResponse: { statuses: [0, 200] } },
+          },
+          {
+            urlPattern: ({ url }) => url.hostname.endsWith('mzstatic.com'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'covers', expiration: { maxEntries: 300 }, cacheableResponse: { statuses: [0, 200] } },
           },
         ],
       },

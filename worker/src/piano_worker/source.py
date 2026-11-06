@@ -32,12 +32,20 @@ def from_youtube(url: str, work_dir: Path) -> SourceAudio:
     log.info("Téléchargement de %s", url)
     with yt_dlp.YoutubeDL(options) as ydl:
         info = ydl.extract_info(url, download=True)
+        if "entries" in info:
+            info = info["entries"][0]
         path = Path(ydl.prepare_filename(info))
     return SourceAudio(
         path=path,
         title=info.get("title") or info["id"],
-        source={"type": "youtube", "url": url, "videoId": info["id"]},
+        source={"type": "youtube", "url": f"https://www.youtube.com/watch?v={info['id']}", "videoId": info["id"]},
     )
+
+
+def from_search(query: str, work_dir: Path) -> SourceAudio:
+    """« Artiste - Titre » choisi dans l'autocomplétion : premier résultat YouTube."""
+    audio = from_youtube(f"ytsearch1:{query} official audio", work_dir)
+    return SourceAudio(path=audio.path, title=query, source={**audio.source, "query": query})
 
 
 def from_file(path: Path, title: str | None) -> SourceAudio:

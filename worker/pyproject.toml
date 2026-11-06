@@ -12,6 +12,11 @@ dependencies = [
     "pretty-midi>=0.2.10",
     # transkun importe pkg_resources, retiré de setuptools 81
     "setuptools<81",
+    "transformers>=5.22.2",
+    "librosa>=0.11.0",
+    "essentia>=2.1b6.dev1389",
+    "scipy>=1.17.1",
+    "resampy>=0.4.3",
 ]
 
 [project.optional-dependencies]

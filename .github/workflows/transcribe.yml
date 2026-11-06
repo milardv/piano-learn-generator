@@ -1,20 +1,37 @@
 name: transcribe
+# La PWA retrouve son job grâce au request_id dans le nom du run
+run-name: "${{ inputs.request_id }} · ${{ inputs.query || inputs.youtube_url || inputs.file }}"
 
-# Déclenché par la PWA (API workflow_dispatch) : une URL YouTube ou un fichier déjà poussé dans uploads/
+# Déclenché par la PWA (API workflow_dispatch) : une recherche « Artiste - Titre », une URL YouTube
+# ou un fichier déjà poussé dans uploads/
 on:
   workflow_dispatch:
     inputs:
+      query:
+        description: Recherche « Artiste - Titre » (premier résultat YouTube)
+        required: false
       youtube_url:
         description: URL YouTube
         required: false
       file:
         description: Chemin d'un audio dans uploads/ (enregistrement micro)
         required: false
+      mode:
+        description: song = chanson -> reprise piano ; piano = transcription d'un enregistrement de piano
+        type: choice
+        options: [song, piano]
+        default: song
       id:
         description: Identifiant du morceau (sinon id YouTube ou nom du fichier)
         required: false
       title:
         description: Titre
+        required: false
+      cover:
+        description: URL de la pochette
+        required: false
+      request_id:
+        description: Identifiant fourni par la PWA pour suivre le job
         required: false
 
 permissions:
@@ -40,21 +57,33 @@ jobs:
 
       - name: Vérifier les entrées
         env:
+          QUERY: ${{ inputs.query }}
           URL: ${{ inputs.youtube_url }}
           FILE: ${{ inputs.file }}
         run: |
-          if { [ -n "$URL" ] && [ -n "$FILE" ]; } || { [ -z "$URL" ] && [ -z "$FILE" ]; }; then
-            echo "::error::Renseigner youtube_url OU file"; exit 1
-          fi
+          count=0
+          for v in "$QUERY" "$URL" "$FILE"; do [ -n "$v" ] && count=$((count + 1)); done
+          if [ "$count" -ne 1 ]; then echo "::error::Renseigner exactement un champ parmi query, youtube_url, file"; exit 1; fi
           case "$FILE" in ""|uploads/*) ;; *) echo "::error::file doit être dans uploads/"; exit 1;; esac
 
       - name: Installer ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
 
+      # yt-dlp a besoin d'un moteur JavaScript pour déchiffrer les formats YouTube
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           cache-dependency-glob: worker/uv.lock
+
+      - name: Cache des modèles Hugging Face
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-pop2piano
 
       - name: Installer le worker
         working-directory: worker
@@ -72,15 +101,21 @@ jobs:
       - name: Transcrire
         working-directory: worker
         env:
+          QUERY: ${{ inputs.query }}
           URL: ${{ inputs.youtube_url }}
           FILE: ${{ inputs.file }}
+          MODE: ${{ inputs.mode }}
           SONG_ID: ${{ inputs.id }}
           TITLE: ${{ inputs.title }}
+          COVER: ${{ inputs.cover }}
         run: |
-          args=(--out-dir ../songs)
-          if [ -n "$URL" ]; then args+=(--youtube "$URL"); else args+=(--file "../$FILE"); fi
-          [ -n "$SONG_ID" ] && args+=(--id "$SONG_ID")
-          [ -n "$TITLE" ] && args+=(--title "$TITLE")
+          args=(--out-dir ../songs --mode "${MODE:-song}")
+          if [ -n "$QUERY" ]; then args+=(--search "$QUERY")
+          elif [ -n "$URL" ]; then args+=(--youtube "$URL")
+          else args+=(--file "../$FILE"); fi
+          if [ -n "$SONG_ID" ]; then args+=(--id "$SONG_ID"); fi
+          if [ -n "$TITLE" ]; then args+=(--title "$TITLE"); fi
+          if [ -n "$COVER" ]; then args+=(--cover "$COVER"); fi
           uv run piano-worker "${args[@]}"
 
       - name: Publier le morceau
@@ -90,7 +125,7 @@ jobs:
           git config user.name "piano-coach-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # L'enregistrement n'est plus utile une fois transcrit
-          [ -n "$FILE" ] && git rm -q "$FILE"
+          if [ -n "$FILE" ]; then git rm -q "$FILE"; fi
           git add songs/
           git commit -m "Ajouter un morceau transcrit"
           git pull --rebase -q

@@ -5,16 +5,18 @@ from pathlib import Path
 
 import pretty_midi
 
+from . import simplify
+
 log = logging.getLogger(__name__)
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 CHORD_WINDOW = 0.05  # s : notes attaquées ensemble = même accord
 MIN_DURATION = 0.03  # s : en dessous, note fantôme
 MIN_VELOCITY = 15
 SMOOTHING = 0.3  # inertie des centres de main
 
 
-def build(midi_path: Path, title: str, source: dict) -> dict:
+def build(midi_path: Path, title: str, source: dict, beat_times: list[float]) -> dict:
     midi = pretty_midi.PrettyMIDI(str(midi_path))
     raw = [n for inst in midi.instruments for n in inst.notes]
     notes = sorted(
@@ -29,16 +31,19 @@ def build(midi_path: Path, title: str, source: dict) -> dict:
         for inst in midi.instruments
         for start, end in sustain_spans(inst.control_changes)
     ]
+    full = [
+        {"p": n.pitch, "t": round(n.start, 3), "d": round(n.end - n.start, 3), "v": n.velocity, "h": h}
+        for n, h in zip(notes, hands)
+    ]
     return {
         "version": FORMAT_VERSION,
         "title": title,
         "source": source,
         "duration": round(max((n.end for n in notes), default=0.0), 3),
         "range": {"min": min((n.pitch for n in notes), default=60), "max": max((n.pitch for n in notes), default=72)},
-        "notes": [
-            {"p": n.pitch, "t": round(n.start, 3), "d": round(n.end - n.start, 3), "v": n.velocity, "h": h}
-            for n, h in zip(notes, hands)
-        ],
+        "beats": [round(b, 3) for b in beat_times],
+        "notes": full,
+        "easy": simplify.easy(full, beat_times),
         "pedals": pedals,
     }
 

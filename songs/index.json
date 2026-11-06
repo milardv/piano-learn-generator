@@ -1,13 +1,31 @@
 [
  {
+  "id": "3BFTio5296w",
+  "title": "Rick Astley - Never Gonna Give You Up",
+  "mode": "song",
+  "cover": null,
+  "source": {
+   "type": "youtube",
+   "url": "https://www.youtube.com/watch?v=3BFTio5296w",
+   "videoId": "3BFTio5296w",
+   "query": "Rick Astley - Never Gonna Give You Up"
+  },
+  "duration": 208.26,
+  "notes": 941,
+  "easy": 393
+ },
+ {
   "id": "9E6b3swbnWg",
   "title": "Chopin - Nocturne op.9 No.2",
+  "mode": "piano",
+  "cover": null,
   "source": {
    "type": "youtube",
    "url": "https://www.youtube.com/watch?v=9E6b3swbnWg",
    "videoId": "9E6b3swbnWg"
   },
   "duration": 265.002,
-  "notes": 1265
+  "notes": 1265,
+  "easy": 616
  }
 ]
