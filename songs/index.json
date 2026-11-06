@@ -27,5 +27,19 @@
   "duration": 265.002,
   "notes": 1265,
   "easy": 616
+ },
+ {
+  "id": "daft-punk-get-lucky",
+  "title": "Daft Punk - Get Lucky",
+  "mode": "song",
+  "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/e8/43/5f/e8435ffa-b6b9-b171-40ab-4ff3959ab661/886443919266.jpg/300x300bb.jpg",
+  "source": {
+   "type": "soundcloud",
+   "url": "https://soundcloud.com/eldjkb/get-lucky-original-version",
+   "query": "Daft Punk - Get Lucky"
+  },
+  "duration": 248.599,
+  "notes": 1927,
+  "easy": 535
  }
 ]
