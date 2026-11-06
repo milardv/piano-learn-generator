@@ -37,7 +37,7 @@ export default defineConfig({
             options: { cacheName: 'songs' },
           },
           {
-            urlPattern: ({ url }) => url.href.startsWith('https://tonejs.github.io/audio/salamander/'),
+            urlPattern: ({ url }) => url.hostname === 'smpldsnds.github.io',
             handler: 'CacheFirst',
             options: { cacheName: 'piano-samples', cacheableResponse: { statuses: [0, 200] } },
           },

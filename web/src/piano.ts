@@ -1,33 +1,25 @@
-import * as Tone from 'tone'
+import { Reverb, SplendidGrandPiano } from 'smplr'
 
-// Échantillons Salamander Grand Piano (CC-BY), 1 note sur 3 : Tone.Sampler rééchantillonne le reste
-const SAMPLES: Record<string, string> = {}
-for (const octave of [1, 2, 3, 4, 5, 6, 7]) {
-  for (const [name, file] of [['C', 'C'], ['D#', 'Ds'], ['F#', 'Fs'], ['A', 'A']]) {
-    SAMPLES[`${name}${octave}`] = `${file}${octave}.mp3`
-  }
-}
-
-let sampler: Tone.Sampler | undefined
+// Splendid Grand Piano (Steinway, plusieurs couches de vélocité), avec une légère réverbération de salle
+let context: AudioContext | undefined
+let piano: ReturnType<typeof SplendidGrandPiano> | undefined
 
 /** À appeler depuis un geste utilisateur (exigence iOS/Chrome pour démarrer l'audio). */
-export async function loadPiano(): Promise<Tone.Sampler> {
-  await Tone.start()
-  if (!sampler) {
-    sampler = new Tone.Sampler({
-      urls: SAMPLES,
-      baseUrl: 'https://tonejs.github.io/audio/salamander/',
-      release: 1,
-    }).toDestination()
+export async function loadPiano() {
+  context ??= new AudioContext({ latencyHint: 'interactive' })
+  await context.resume()
+  if (!piano) {
+    piano = SplendidGrandPiano(context, { volume: 100, decayTime: 0.8 })
+    piano.output.addEffect('reverb', Reverb(context), 0.18)
   }
-  await Tone.loaded()
-  return sampler
+  await piano.ready
+  return piano
 }
 
 export function playNote(pitch: number, duration: number, velocity: number) {
-  sampler?.triggerAttackRelease(Tone.Frequency(pitch, 'midi').toFrequency(), duration, Tone.now(), velocity / 127)
+  piano?.start({ note: pitch, velocity, duration })
 }
 
 export function stopAll() {
-  sampler?.releaseAll()
+  piano?.stop()
 }
