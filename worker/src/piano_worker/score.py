@@ -23,7 +23,7 @@ from . import chords
 log = logging.getLogger(__name__)
 
 URL = "http://hog.ee.columbia.edu/craffel/lmd/clean_midi.tar.gz"
-ARCHIVE = Path(os.environ.get("PIANO_LMD", Path.home() / ".cache/piano-worker/clean_midi.tar.gz"))
+ARCHIVE = Path(os.environ.get("PIANO_LMD", Path.home() / ".cache/piano-worker/clean_midi.tar.gz")).expanduser()
 MIN_SIMILARITY = 0.88
 MAX_VERSIONS = 8
 MELODY_NAME = re.compile(r"melod|vocal|voice|voix|lead|sing|chant|vox|lyric|solo", re.I)

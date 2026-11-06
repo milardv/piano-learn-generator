@@ -87,12 +87,19 @@ jobs:
           path: ~/.cache/huggingface
           key: hf-pop2piano
 
-      # Partitions consultées avant de passer par l'audio : PDMX (piano, ~220 Mo) puis Lakh (MIDI complets, 230 Mo)
-      - name: Cache des partitions
+      # Partitions consultées avant de passer par l'audio : PDMX (piano, ~220 Mo) puis Lakh (MIDI complets, 230 Mo).
+      # Un cache par source : un cache n'est jamais réenregistré, Lakh n'est téléchargé qu'au premier morceau qui en a besoin
+      - name: Cache des partitions piano
         uses: actions/cache@v4
         with:
           path: ~/.cache/piano-worker
           key: scores-pdmx-lakh-v1
+
+      - name: Cache des partitions MIDI
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/piano-lakh
+          key: scores-lakh-v1
 
       - name: Installer le worker
         working-directory: worker
@@ -117,6 +124,7 @@ jobs:
           SONG_ID: ${{ inputs.id }}
           TITLE: ${{ inputs.title }}
           COVER: ${{ inputs.cover }}
+          PIANO_LMD: ~/.cache/piano-lakh/clean_midi.tar.gz
         run: |
           args=(--out-dir ../songs --mode "${MODE:-song}")
           if [ -n "$QUERY" ]; then args+=(--search "$QUERY")
