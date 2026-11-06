@@ -10,9 +10,17 @@ const TOKEN_KEY = 'piano-coach:github-token'
 export const getToken = () => safe(() => localStorage.getItem(TOKEN_KEY)) ?? ''
 export const setToken = (token: string) => safe(() => localStorage.setItem(TOKEN_KEY, token.trim()))
 
-/** Version la plus fraîche (dépôt), sinon celle déployée avec le site (hors ligne). */
+/** Union du dépôt (le plus frais) et de la copie locale (hors ligne, ou générée en dev). */
 export async function fetchIndex(): Promise<SongEntry[]> {
-  return fetchFirst(ordered([`${RAW}/index.json?t=${Date.now()}`, 'songs/index.json']))
+  const lists = await Promise.allSettled(
+    ordered([`${RAW}/index.json?t=${Date.now()}`, 'songs/index.json']).map((url) => fetchFirst<SongEntry[]>([url])),
+  )
+  const loaded = lists.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
+  if (!loaded.length) throw (lists[0] as PromiseRejectedResult).reason
+  // À id égal, la première liste l'emporte
+  const byId = new Map<string, SongEntry>()
+  for (const entry of loaded.flat()) if (!byId.has(entry.id)) byId.set(entry.id, entry)
+  return [...byId.values()]
 }
 
 export async function fetchSong(id: string): Promise<Song> {
